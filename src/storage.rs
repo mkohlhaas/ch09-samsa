@@ -5,10 +5,13 @@ use std::sync::Arc;
 
 /// In-memory storage for messages
 ///
-/// Represents the bottom of our data flow - data only flows IN
+/// Represents the bottom of our data flow - data only flows IN.
+///
+/// Storage is the source of truth. Each topic maps to a Vec<Arc<Event>>, and the event's position
+/// in that vec is its offset.
 #[derive(Debug)]
 pub struct Storage {
-    topics: HashMap<String, Vec<Arc<Event>>>,
+    topics: HashMap<String, Vec<Arc<Event>>>, // topic -> Events
 }
 
 impl Storage {
@@ -101,7 +104,10 @@ mod tests {
         let mut storage = Storage::new();
         for i in 0..5 {
             storage
-                .append("test.topic".into(), event("test.topic", &format!("Msg {i}"), i))
+                .append(
+                    "test.topic".into(),
+                    event("test.topic", &format!("Msg {i}"), i),
+                )
                 .unwrap();
         }
 
@@ -137,7 +143,10 @@ mod tests {
         let mut storage = Storage::new();
         for i in 0..5 {
             storage
-                .append("test.topic".into(), event("test.topic", &format!("Msg {i}"), i))
+                .append(
+                    "test.topic".into(),
+                    event("test.topic", &format!("Msg {i}"), i),
+                )
                 .unwrap();
         }
 
@@ -163,7 +172,10 @@ mod tests {
         let mut storage = Storage::new();
         for i in 0..5 {
             storage
-                .append("test.topic".into(), event("test.topic", &format!("Msg {i}"), i))
+                .append(
+                    "test.topic".into(),
+                    event("test.topic", &format!("Msg {i}"), i),
+                )
                 .unwrap();
         }
 

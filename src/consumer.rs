@@ -5,7 +5,6 @@ use std::sync::Arc;
 /// Consumer receives messages from topics via the broker
 ///
 /// Consumers only pull data - they never push data back upstream
-/// NOTE: Data should be pushed from the Broker to the Consumer!
 pub struct Consumer {
     broker: Arc<Broker>,
     topic: String,
