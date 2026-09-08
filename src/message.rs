@@ -1,3 +1,5 @@
+use std::str::{self, from_utf8};
+
 /// A message flowing through the Samsa system
 ///
 /// Messages are immutable once created and flow downward:
@@ -36,7 +38,7 @@ impl Message {
 
     /// Get the message value as a string (if valid UTF-8)
     pub fn as_text(&self) -> Option<&str> {
-        std::str::from_utf8(&self.value).ok()
+        from_utf8(&self.value).ok()
     }
 }
 

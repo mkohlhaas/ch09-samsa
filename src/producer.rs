@@ -27,7 +27,7 @@ impl Producer {
         self.send(message)
     }
 
-    /// Send a keyed message for partitioning
+    /// Send a keyed message (with partitioning)
     pub fn send_keyed(&self, topic: &str, key: &str, value: &[u8]) -> Result<u64> {
         let message = Message::keyed(topic, key, value);
         self.send(message)
