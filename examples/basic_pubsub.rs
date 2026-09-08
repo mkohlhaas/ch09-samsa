@@ -24,11 +24,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(event) = consumer.poll()? {
         if let Some(text) = event.message.as_text() {
             println!("Received: {} (offset: {})", text, event.offset);
-        }
 
-        // Break after receiving the goodbye message
-        if event.message.as_text() == Some("Goodbye!") {
-            break;
+            // Break after receiving the goodbye message
+            if text == "Goodbye!" {
+                break;
+            }
         }
     }
 
