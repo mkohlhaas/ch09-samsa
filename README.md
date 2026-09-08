@@ -119,3 +119,6 @@ partition to send it to using one of three strategies:
 partition, not across the entire topic. If global topic ordering is a strict
 requirement for your system, you have to use a single partition (which limits
 your processing scale).
+
+
+⚠️ In Samsa, offsets are per-topic, not per-partition - because there are no partitions at all! The message key is stored but never used for routing - it's partition metadata only.

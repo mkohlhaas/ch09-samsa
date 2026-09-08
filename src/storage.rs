@@ -26,6 +26,7 @@ impl Storage {
     /// Note: This is the one place where data flows upward, but it's a query
     /// operation, not state mutation. The storage itself doesn't change.
     /// Returns Arc<Event> to avoid cloning message payloads.
+    /// Only called by the broker in broker's fetch(...).
     pub fn fetch(
         &self,
         topic: &str,
