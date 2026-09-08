@@ -1,0 +1,12 @@
+[package]
+name = "samsa"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "2.0"
+
+[[example]]
+name = "basic_pubsub"
+path = "examples/basic_pubsub.rs"
+
