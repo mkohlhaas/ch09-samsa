@@ -21,7 +21,7 @@ impl Producer {
         self.broker.publish(message)
     }
 
-    /// Send a simple text message
+    /// Send a simple text message (no partitioning)
     pub fn send_text(&self, topic: &str, text: &str) -> Result<u64> {
         let message = Message::text(topic, text);
         self.send(message)
