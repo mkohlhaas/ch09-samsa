@@ -62,6 +62,9 @@ impl Consumer {
     }
 
     /// Seek to a specific offset
+    ///
+    /// Out-of-range offsets are safe: `poll`/`poll_batch` simply return no
+    /// events when the offset is beyond the last stored event.
     pub fn seek(&mut self, offset: u64) {
         self.offset = offset;
     }
