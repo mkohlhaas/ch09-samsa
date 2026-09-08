@@ -8,7 +8,7 @@ use std::sync::Mutex;
 ///
 /// Coordinates message flow from producers to consumers while maintaining
 /// clear directional boundaries
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Broker {
     storage: Arc<Mutex<Storage>>,
     topic_offsets: Arc<Mutex<HashMap<String, u64>>>, // topic -> offset
@@ -16,10 +16,7 @@ pub struct Broker {
 
 impl Broker {
     pub fn new() -> Self {
-        Self {
-            storage: Arc::new(Mutex::new(Storage::new())),
-            topic_offsets: Arc::new(Mutex::new(HashMap::new())),
-        }
+        Self::default()
     }
 
     /// Publish a message (called by producers)
@@ -63,12 +60,6 @@ impl Broker {
     pub fn latest_offset(&self, topic: &str) -> u64 {
         let offsets = self.topic_offsets.lock().unwrap();
         *offsets.get(topic).unwrap_or(&0)
-    }
-}
-
-impl Default for Broker {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

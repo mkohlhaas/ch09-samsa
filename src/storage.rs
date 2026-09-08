@@ -9,18 +9,12 @@ use std::sync::Arc;
 ///
 /// Storage is the source of truth. Each topic maps to a Vec<Arc<Event>>, and the event's position
 /// in that vec is its offset.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Storage {
     topics: HashMap<String, Vec<Arc<Event>>>, // topic -> Events
 }
 
 impl Storage {
-    pub fn new() -> Self {
-        Self {
-            topics: HashMap::new(),
-        }
-    }
-
     /// Append an event to a topic (data flowing DOWN)
     pub fn append(&mut self, topic: String, event: Event) -> Result<()> {
         self.topics.entry(topic).or_default().push(Arc::new(event));
@@ -79,8 +73,8 @@ mod tests {
     }
 
     #[test]
-    fn test_storage_new_is_empty() {
-        let storage = Storage::new();
+    fn test_storage_default_is_empty() {
+        let storage = Storage::default();
         assert_eq!(storage.latest_offset("any.topic"), 0);
         let events = storage.fetch("any.topic", 0, 10).unwrap();
         assert!(events.is_empty());
@@ -88,7 +82,7 @@ mod tests {
 
     #[test]
     fn test_storage_append() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         storage
             .append("test.topic".into(), event("test.topic", "First", 0))
             .unwrap();
@@ -101,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_storage_append_multiple() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         for i in 0..5 {
             storage
                 .append(
@@ -119,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_storage_append_separate_topics() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         storage
             .append("topic.a".into(), event("topic.a", "A", 0))
             .unwrap();
@@ -140,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_storage_fetch_from_offset() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         for i in 0..5 {
             storage
                 .append(
@@ -158,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_storage_fetch_from_beyond_last() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         storage
             .append("test.topic".into(), event("test.topic", "Only", 0))
             .unwrap();
@@ -169,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_storage_fetch_max_events() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         for i in 0..5 {
             storage
                 .append(
@@ -187,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_storage_fetch_nonexistent_topic() {
-        let mut storage = Storage::new();
+        let mut storage = Storage::default();
         storage
             .append("test.topic".into(), event("test.topic", "A", 0))
             .unwrap();
@@ -198,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_storage_latest_offset_empty_topic() {
-        let storage = Storage::new();
+        let storage = Storage::default();
         assert_eq!(storage.latest_offset("empty.topic"), 0);
     }
 }
