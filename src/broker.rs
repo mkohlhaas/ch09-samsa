@@ -20,6 +20,10 @@ impl Broker {
     }
 
     /// Publish a message (called by producers)
+    ///
+    /// This represents data flowing DOWN from producer to broker.
+    /// Returns the offset assigned to the message (where it was stored),
+    /// or an error if storage failed.
     pub fn publish(&self, message: Message) -> Result<u64> {
         let mut storage = self.storage.lock().unwrap();
         let mut offsets = self.topic_offsets.lock().unwrap();
