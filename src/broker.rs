@@ -11,7 +11,7 @@ use std::sync::Mutex;
 #[derive(Debug, Default)]
 pub struct Broker {
     storage: Arc<Mutex<Storage>>,
-    topic_offsets: Arc<Mutex<HashMap<String, u64>>>, // topic -> offset
+    topic_offsets: Arc<Mutex<HashMap<String, u64>>>, // topic -> offset (next offset to assign per topic)
 }
 
 impl Broker {
@@ -20,8 +20,6 @@ impl Broker {
     }
 
     /// Publish a message (called by producers)
-    ///
-    /// This represents data flowing DOWN from producer to broker
     pub fn publish(&self, message: Message) -> Result<u64> {
         let mut storage = self.storage.lock().unwrap();
         let mut offsets = self.topic_offsets.lock().unwrap();
@@ -43,9 +41,6 @@ impl Broker {
     }
 
     /// Fetch events for a consumer (called by consumers)
-    ///
-    /// This represents data flowing DOWN from broker to consumer
-    /// Returns Arc<Event> to avoid cloning message payloads
     pub fn fetch(
         &self,
         topic: &str,
@@ -56,7 +51,7 @@ impl Broker {
         storage.fetch(topic, from_offset, max_events)
     }
 
-    /// Get the latest offset for a topic
+    /// Get the latest offset for a topic (called by consumers)
     pub fn latest_offset(&self, topic: &str) -> u64 {
         let offsets = self.topic_offsets.lock().unwrap();
         *offsets.get(topic).unwrap_or(&0)

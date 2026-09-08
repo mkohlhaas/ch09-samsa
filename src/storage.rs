@@ -15,18 +15,15 @@ pub struct Storage {
 }
 
 impl Storage {
-    /// Append an event to a topic (data flowing DOWN)
+    /// Append an event to a topic
     pub fn append(&mut self, topic: String, event: Event) -> Result<()> {
         self.topics.entry(topic).or_default().push(Arc::new(event));
         Ok(())
     }
 
-    /// Fetch events from a topic (data flowing UP to caller)
+    /// Fetch events from a topic
     ///
-    /// Note: This is the one place where data flows upward, but it's a query
-    /// operation, not state mutation. The storage itself doesn't change.
-    /// Returns Arc<Event> to avoid cloning message payloads.
-    /// Only called by the broker in broker's fetch(...).
+    /// Only called by the broker (in broker's fetch method).
     pub fn fetch(
         &self,
         topic: &str,
@@ -49,7 +46,7 @@ impl Storage {
         Ok(events)
     }
 
-    /// Get the latest offset for a topic
+    /// Get the latest offset for a topic (= the next index where a new message would be stored)
     ///
     /// Note: This method is part of the Storage API contract shown in the chapter text
     /// (see StorageBackend trait). While not currently called in the implementation,

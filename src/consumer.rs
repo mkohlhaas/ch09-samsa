@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub struct Consumer {
     broker: Arc<Broker>,
     topic: String,
-    offset: u64,
+    offset: u64, // next event offset to fetch ("where am I")
 }
 
 impl Consumer {
@@ -33,9 +33,6 @@ impl Consumer {
     }
 
     /// Poll for new events
-    ///
-    /// This pulls data DOWN from the broker to the consumer
-    /// Returns Arc<Event> to avoid cloning message payloads
     pub fn poll(&mut self) -> Result<Option<Arc<Event>>> {
         let events = self.broker.fetch(&self.topic, self.offset, 1)?;
 
