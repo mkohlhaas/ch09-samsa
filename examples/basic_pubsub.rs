@@ -1,4 +1,4 @@
-use samsa::{Broker, Consumer};
+use samsa::Broker;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -11,7 +11,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let producer = broker.producer();
 
     // Create a consumer that pulls data DOWN from the broker
-    let mut consumer = Consumer::from_beginning(&broker, "greetings");
+    let mut consumer = broker.consumer_from_beginning("greetings");
 
     // Producer sends messages (data flows DOWN)
     println!("Sending messages...");

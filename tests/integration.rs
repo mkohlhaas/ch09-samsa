@@ -1,4 +1,4 @@
-use samsa::{Broker, Consumer, Event, Message, Producer};
+use samsa::{Broker, Event, Message, Producer};
 use std::sync::Arc;
 
 fn make_broker() -> Broker {
@@ -17,7 +17,7 @@ fn test_full_pubsub_lifecycle() {
     assert_eq!(offset2, 1);
     assert_eq!(offset3, 2);
 
-    let mut consumer = Consumer::from_beginning(&broker, "greetings");
+    let mut consumer = broker.consumer_from_beginning("greetings");
 
     let mut received = Vec::new();
     while let Some(event) = consumer.poll().unwrap() {
@@ -55,8 +55,8 @@ fn test_multiple_consumers_track_independent_positions() {
     producer.send_text("topic", "two").unwrap();
     producer.send_text("topic", "three").unwrap();
 
-    let mut consumer_a = Consumer::from_beginning(&broker, "topic");
-    let mut consumer_b = Consumer::from_beginning(&broker, "topic");
+    let mut consumer_a = broker.consumer_from_beginning("topic");
+    let mut consumer_b = broker.consumer_from_beginning("topic");
 
     let first_a = consumer_a.poll().unwrap().unwrap();
     assert_eq!(first_a.message.as_text(), Some("one"));
@@ -76,7 +76,7 @@ fn test_consumer_seek_and_reconsume() {
     producer.send_text("seekable", "second").unwrap();
     producer.send_text("seekable", "third").unwrap();
 
-    let mut consumer = Consumer::from_beginning(&broker, "seekable");
+    let mut consumer = broker.consumer_from_beginning("seekable");
 
     let first = consumer.poll().unwrap().unwrap();
     assert_eq!(first.message.as_text(), Some("first"));
@@ -96,7 +96,7 @@ fn test_consumer_starts_at_latest_by_default() {
     let producer = Producer::new(&broker);
     producer.send_text("news", "old").unwrap();
 
-    let mut consumer = Consumer::new(&broker, "news");
+    let mut consumer = broker.consumer("news");
     assert_eq!(consumer.current_offset(), 1);
     assert!(consumer.poll().unwrap().is_none());
 
@@ -116,7 +116,7 @@ fn test_producer_send_variants_roundtrip() {
         .send_keyed("misc", "key-1", b"keyed bytes")
         .unwrap();
 
-    let mut consumer = Consumer::from_beginning(&broker, "misc");
+    let mut consumer = broker.consumer_from_beginning("misc");
 
     let raw = consumer.poll().unwrap().unwrap();
     assert_eq!(raw.message.as_text(), Some("raw"));
@@ -139,7 +139,7 @@ fn test_message_payloads_can_be_binary() {
         .send(Message::new("binary", None, binary.clone()))
         .unwrap();
 
-    let mut consumer = Consumer::from_beginning(&broker, "binary");
+    let mut consumer = broker.consumer_from_beginning("binary");
     let event = consumer.poll().unwrap().unwrap();
     assert_eq!(event.message.value, binary);
     assert_eq!(event.message.as_text(), None);

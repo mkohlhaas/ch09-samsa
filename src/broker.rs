@@ -51,6 +51,11 @@ impl Broker {
         Consumer::new(self, topic)
     }
 
+    /// Create a consumer bound to this broker, starting at offset 0
+    pub fn consumer_from_beginning(&self, topic: impl Into<String>) -> Consumer {
+        Consumer::from_beginning(self, topic)
+    }
+
     /// Publish a message (called by producers)
     ///
     /// This represents data flowing DOWN from producer to broker.
@@ -217,6 +222,25 @@ mod tests {
         let broker = Broker::new();
         let events = broker.fetch("nonexistent", 0, 10).unwrap();
         assert_eq!(events.len(), 0);
+    }
+
+    #[test]
+    fn test_consumer_from_beginning() {
+        let broker = Broker::new();
+        broker
+            .publish(Message::text("test.topic", "First"))
+            .unwrap();
+        broker
+            .publish(Message::text("test.topic", "Second"))
+            .unwrap();
+
+        let mut consumer = broker.consumer_from_beginning("test.topic");
+        assert_eq!(consumer.current_offset(), 0);
+
+        let events = consumer.poll_batch(10).unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].offset, 0);
+        assert_eq!(events[1].offset, 1);
     }
 
     #[test]
