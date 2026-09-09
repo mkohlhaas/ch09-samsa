@@ -1,45 +1,56 @@
 use crate::error::Result;
-use crate::{Event, Message, storage::Storage};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
+use crate::storage::{InMemoryStorage, StorageBackend};
+use crate::{Event, Message};
+use std::sync::{Arc, Mutex, PoisonError};
 
 /// The central message broker
 ///
 /// Coordinates message flow from producers to consumers while maintaining
-/// clear directional boundaries
-#[derive(Debug, Default)]
+/// clear directional boundaries.
+///
+/// Storage is the single source of truth for offsets: each backend derives the
+/// next offset from the events it already holds, so the broker keeps no
+/// separate offset bookkeeping.
 pub struct Broker {
-    storage: Arc<Mutex<Storage>>,
-    topic_offsets: Arc<Mutex<HashMap<String, u64>>>, // topic -> offset (next offset to assign per topic)
+    storage: Arc<Mutex<dyn StorageBackend>>,
+}
+
+impl Default for Broker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Broker {
+    /// Create a broker backed by the in-memory storage
     pub fn new() -> Self {
-        Self::default()
+        Self::with_storage(InMemoryStorage::default())
+    }
+
+    /// Create a broker backed by a custom storage implementation
+    pub fn with_storage<S>(storage: S) -> Self
+    where
+        S: StorageBackend + 'static,
+    {
+        Self {
+            storage: Arc::new(Mutex::new(storage)),
+        }
     }
 
     /// Publish a message (called by producers)
     ///
     /// This represents data flowing DOWN from producer to broker.
-    /// Returns the offset assigned to the message (where it was stored),
-    /// or an error if storage failed.
+    /// The offset is derived from the storage backend while holding the lock,
+    /// so offset assignment and append are atomic. Returns the offset assigned
+    /// to the message (where it was stored), or an error if storage failed.
     pub fn publish(&self, message: Message) -> Result<u64> {
-        let mut storage = self.storage.lock().unwrap();
-        let mut offsets = self.topic_offsets.lock().unwrap();
+        // Recover a poisoned lock instead of panicking: a panic in another thread
+        // only poisoned the mutex after releasing it, so the guard is still valid.
+        let mut storage = self.storage.lock().unwrap_or_else(PoisonError::into_inner);
 
-        // Clone topic once from message
         let topic = message.topic.clone();
-
-        // Entry API requires owned String, so we clone topic again
-        // This is unavoidable: both HashMaps need owned keys
-        let offset = offsets.entry(topic.clone()).or_insert(0);
-        let current_offset = *offset;
-        *offset += 1;
-
-        let event = Event::new(message, current_offset);
-        // Pass owned topic to storage (storage won't need to clone)
-        storage.append(topic, event)?;
+        let current_offset = storage.latest_offset(&topic);
+        storage.append(topic, Event::new(message, current_offset))?;
 
         Ok(current_offset)
     }
@@ -51,14 +62,16 @@ impl Broker {
         from_offset: u64,
         max_events: usize,
     ) -> Result<Vec<Arc<Event>>> {
-        let storage = self.storage.lock().unwrap();
+        let storage = self.storage.lock().unwrap_or_else(PoisonError::into_inner);
         storage.fetch(topic, from_offset, max_events)
     }
 
     /// Get the latest offset for a topic (called by consumers)
     pub fn latest_offset(&self, topic: &str) -> u64 {
-        let offsets = self.topic_offsets.lock().unwrap();
-        *offsets.get(topic).unwrap_or(&0)
+        self.storage
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .latest_offset(topic)
     }
 }
 
