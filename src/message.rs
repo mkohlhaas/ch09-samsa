@@ -2,8 +2,12 @@ use std::str::{self, from_utf8};
 
 /// A message flowing through the Samsa system
 ///
-/// Messages are immutable once created and flow downward:
+/// Messages are immutable in practice once published to the broker and flow downward:
 /// Producer -> Broker -> Consumer
+///
+/// "The immutability here is architectural: we provide no setter methods, and the system never
+/// passes mutable references to messages. This design choice, enforced by the API rather than the
+/// type system, is what eliminates entire classes of bugs related to unexpected state changes."
 #[derive(Debug, Clone)]
 pub struct Message {
     pub topic: String,
