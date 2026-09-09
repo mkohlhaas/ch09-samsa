@@ -1,14 +1,14 @@
 use samsa::{Broker, Consumer, Event, Message, Producer};
 use std::sync::Arc;
 
-fn make_broker() -> Arc<Broker> {
-    Arc::new(Broker::new())
+fn make_broker() -> Broker {
+    Broker::new()
 }
 
 #[test]
 fn test_full_pubsub_lifecycle() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
 
     let offset1 = producer.send_text("greetings", "Hello").unwrap();
     let offset2 = producer.send_text("greetings", "World").unwrap();
@@ -17,7 +17,7 @@ fn test_full_pubsub_lifecycle() {
     assert_eq!(offset2, 1);
     assert_eq!(offset3, 2);
 
-    let mut consumer = Consumer::from_beginning(Arc::clone(&broker), "greetings");
+    let mut consumer = Consumer::from_beginning(&broker, "greetings");
 
     let mut received = Vec::new();
     while let Some(event) = consumer.poll().unwrap() {
@@ -30,8 +30,8 @@ fn test_full_pubsub_lifecycle() {
 #[test]
 fn test_multiple_producers_share_topic_offsets() {
     let broker = make_broker();
-    let producer_a = Producer::new(Arc::clone(&broker));
-    let producer_b = Producer::new(Arc::clone(&broker));
+    let producer_a = Producer::new(&broker);
+    let producer_b = Producer::new(&broker);
 
     let offsets_a = (0..3)
         .map(|i| producer_a.send_text("shared", &format!("A{i}")))
@@ -50,13 +50,13 @@ fn test_multiple_producers_share_topic_offsets() {
 #[test]
 fn test_multiple_consumers_track_independent_positions() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
     producer.send_text("topic", "one").unwrap();
     producer.send_text("topic", "two").unwrap();
     producer.send_text("topic", "three").unwrap();
 
-    let mut consumer_a = Consumer::from_beginning(Arc::clone(&broker), "topic");
-    let mut consumer_b = Consumer::from_beginning(Arc::clone(&broker), "topic");
+    let mut consumer_a = Consumer::from_beginning(&broker, "topic");
+    let mut consumer_b = Consumer::from_beginning(&broker, "topic");
 
     let first_a = consumer_a.poll().unwrap().unwrap();
     assert_eq!(first_a.message.as_text(), Some("one"));
@@ -71,12 +71,12 @@ fn test_multiple_consumers_track_independent_positions() {
 #[test]
 fn test_consumer_seek_and_reconsume() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
     producer.send_text("seekable", "first").unwrap();
     producer.send_text("seekable", "second").unwrap();
     producer.send_text("seekable", "third").unwrap();
 
-    let mut consumer = Consumer::from_beginning(Arc::clone(&broker), "seekable");
+    let mut consumer = Consumer::from_beginning(&broker, "seekable");
 
     let first = consumer.poll().unwrap().unwrap();
     assert_eq!(first.message.as_text(), Some("first"));
@@ -86,20 +86,17 @@ fn test_consumer_seek_and_reconsume() {
     assert_eq!(consumer.current_offset(), 0);
 
     let replayed = consumer.poll_batch(10).unwrap();
-    let texts: Vec<Option<&str>> = replayed
-        .iter()
-        .map(|e| e.message.as_text())
-        .collect();
+    let texts: Vec<Option<&str>> = replayed.iter().map(|e| e.message.as_text()).collect();
     assert_eq!(texts, vec![Some("first"), Some("second"), Some("third")]);
 }
 
 #[test]
 fn test_consumer_starts_at_latest_by_default() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
     producer.send_text("news", "old").unwrap();
 
-    let mut consumer = Consumer::new(Arc::clone(&broker), "news");
+    let mut consumer = Consumer::new(&broker, "news");
     assert_eq!(consumer.current_offset(), 1);
     assert!(consumer.poll().unwrap().is_none());
 
@@ -112,14 +109,14 @@ fn test_consumer_starts_at_latest_by_default() {
 #[test]
 fn test_producer_send_variants_roundtrip() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
 
     producer.send(Message::text("misc", "raw")).unwrap();
     producer
         .send_keyed("misc", "key-1", b"keyed bytes")
         .unwrap();
 
-    let mut consumer = Consumer::from_beginning(Arc::clone(&broker), "misc");
+    let mut consumer = Consumer::from_beginning(&broker, "misc");
 
     let raw = consumer.poll().unwrap().unwrap();
     assert_eq!(raw.message.as_text(), Some("raw"));
@@ -135,14 +132,14 @@ fn test_producer_send_variants_roundtrip() {
 #[test]
 fn test_message_payloads_can_be_binary() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
 
     let binary: Vec<u8> = (0u8..=255).collect();
     producer
         .send(Message::new("binary", None, binary.clone()))
         .unwrap();
 
-    let mut consumer = Consumer::from_beginning(Arc::clone(&broker), "binary");
+    let mut consumer = Consumer::from_beginning(&broker, "binary");
     let event = consumer.poll().unwrap().unwrap();
     assert_eq!(event.message.value, binary);
     assert_eq!(event.message.as_text(), None);
@@ -151,7 +148,7 @@ fn test_message_payloads_can_be_binary() {
 #[test]
 fn test_fetch_returns_shared_arcs() {
     let broker = make_broker();
-    let producer = Producer::new(Arc::clone(&broker));
+    let producer = Producer::new(&broker);
     producer.send_text("arc", "data").unwrap();
 
     let events_a: Vec<Arc<Event>> = broker.fetch("arc", 0, 10).unwrap();

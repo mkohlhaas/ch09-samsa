@@ -1,17 +1,22 @@
 use crate::error::Result;
 use crate::{Broker, Message};
-use std::sync::Arc;
 
 /// Producer sends messages to topics via the broker
 ///
-/// Producers only push data downward - they never receive data back
+/// Producers only push data downward - they never receive data back.
+///
+/// A producer holds a cheap clone of the broker, so it can be created from a
+/// `&Broker` (or via `Broker::producer()`) without managing shared ownership.
 pub struct Producer {
-    broker: Arc<Broker>,
+    broker: Broker,
 }
 
 impl Producer {
-    pub fn new(broker: Arc<Broker>) -> Self {
-        Self { broker }
+    /// Create a producer bound to the given broker
+    pub fn new(broker: &Broker) -> Self {
+        Self {
+            broker: broker.clone(),
+        }
     }
 
     /// Send a message to a topic
@@ -40,14 +45,14 @@ mod tests {
 
     #[test]
     fn test_producer_creation() {
-        let broker = Arc::new(Broker::new());
-        let _producer = Producer::new(broker);
+        let broker = Broker::new();
+        let _producer = Producer::new(&broker);
     }
 
     #[test]
     fn test_send_message() {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         let message = Message::text("test.topic", "Hello");
         let offset = producer.send(message).unwrap();
@@ -58,8 +63,8 @@ mod tests {
 
     #[test]
     fn test_send_text() {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         let offset = producer.send_text("test.topic", "Hello").unwrap();
 
@@ -69,8 +74,8 @@ mod tests {
 
     #[test]
     fn test_send_keyed() {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         let offset = producer
             .send_keyed("test.topic", "user-123", b"Hello")
@@ -81,8 +86,8 @@ mod tests {
 
     #[test]
     fn test_multiple_sends() {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         let offset1 = producer.send_text("test.topic", "First").unwrap();
         let offset2 = producer.send_text("test.topic", "Second").unwrap();
@@ -95,8 +100,8 @@ mod tests {
 
     #[test]
     fn test_send_to_multiple_topics() {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         let offset_a1 = producer.send_text("topic.a", "Message A").unwrap();
         let offset_b1 = producer.send_text("topic.b", "Message B").unwrap();

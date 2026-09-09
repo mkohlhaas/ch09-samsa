@@ -82,8 +82,20 @@ impl SamsaError {
         SamsaError::Schema(msg.into())
     }
 
+    pub fn routing(msg: impl Into<String>) -> Self {
+        SamsaError::Routing(msg.into())
+    }
+
+    pub fn broker(msg: impl Into<String>) -> Self {
+        SamsaError::Broker(msg.into())
+    }
+
     pub fn connection(msg: impl Into<String>) -> Self {
         SamsaError::Connection(msg.into())
+    }
+
+    pub fn group(msg: impl Into<String>) -> Self {
+        SamsaError::Group(msg.into())
     }
 }
 

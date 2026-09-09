@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::storage::{InMemoryStorage, StorageBackend};
-use crate::{Event, Message};
+use crate::{Consumer, Event, Message, Producer};
 use std::sync::{Arc, Mutex, PoisonError};
 
 /// The central message broker
@@ -11,8 +11,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 /// Storage is the single source of truth for offsets: each backend derives the
 /// next offset from the events it already holds, so the broker keeps no
 /// separate offset bookkeeping.
+///
+/// Brokers are cheaply cloneable: they wrap their storage in `Arc`, so cloning
+/// shares the same underlying storage rather than duplicating it.
+#[derive(Clone)]
 pub struct Broker {
-    storage: Mutex<Box<dyn StorageBackend>>,
+    storage: Arc<Mutex<Box<dyn StorageBackend>>>,
 }
 
 impl Default for Broker {
@@ -33,8 +37,18 @@ impl Broker {
         S: StorageBackend + 'static,
     {
         Self {
-            storage: Mutex::new(Box::new(storage)),
+            storage: Arc::new(Mutex::new(Box::new(storage))),
         }
+    }
+
+    /// Create a producer bound to this broker
+    pub fn producer(&self) -> Producer {
+        Producer::new(self)
+    }
+
+    /// Create a consumer bound to this broker, starting at the latest offset
+    pub fn consumer(&self, topic: impl Into<String>) -> Consumer {
+        Consumer::new(self, topic)
     }
 
     /// Publish a message (called by producers)

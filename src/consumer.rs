@@ -4,29 +4,32 @@ use std::sync::Arc;
 
 /// Consumer receives messages from topics via the broker
 ///
-/// Consumers only pull data - they never push data back upstream
+/// Consumers only pull data - they never push data back upstream.
+///
+/// A consumer holds a cheap clone of the broker, so it can be created from a
+/// `&Broker` (or via `Broker::consumer()`) without managing shared ownership.
 pub struct Consumer {
-    broker: Arc<Broker>,
+    broker: Broker,
     topic: String,
     offset: u64, // next event offset to fetch ("where am I")
 }
 
 impl Consumer {
-    pub fn new(broker: Arc<Broker>, topic: impl Into<String>) -> Self {
+    pub fn new(broker: &Broker, topic: impl Into<String>) -> Self {
         let topic = topic.into();
         let offset = broker.latest_offset(&topic);
 
         Self {
-            broker,
+            broker: broker.clone(),
             topic,
             offset,
         }
     }
 
     /// Create a consumer starting from the beginning of the topic
-    pub fn from_beginning(broker: Arc<Broker>, topic: impl Into<String>) -> Self {
+    pub fn from_beginning(broker: &Broker, topic: impl Into<String>) -> Self {
         Self {
-            broker,
+            broker: broker.clone(),
             topic: topic.into(),
             offset: 0,
         }
@@ -75,9 +78,9 @@ mod tests {
     use super::*;
     use crate::Producer;
 
-    fn setup_broker_with_messages() -> Arc<Broker> {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+    fn setup_broker_with_messages() -> Broker {
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         producer.send_text("test.topic", "Message 1").unwrap();
         producer.send_text("test.topic", "Message 2").unwrap();
@@ -89,7 +92,7 @@ mod tests {
     #[test]
     fn test_consumer_from_latest() {
         let broker = setup_broker_with_messages();
-        let mut consumer = Consumer::new(broker.clone(), "test.topic");
+        let mut consumer = Consumer::new(&broker, "test.topic");
 
         // Consumer starts at latest offset, so no messages available
         assert!(consumer.poll().unwrap().is_none());
@@ -99,7 +102,7 @@ mod tests {
     #[test]
     fn test_consumer_from_beginning() {
         let broker = setup_broker_with_messages();
-        let mut consumer = Consumer::from_beginning(broker.clone(), "test.topic");
+        let mut consumer = Consumer::from_beginning(&broker, "test.topic");
 
         // Consumer starts at offset 0
         assert_eq!(consumer.current_offset(), 0);
@@ -121,7 +124,7 @@ mod tests {
     #[test]
     fn test_poll_batch() {
         let broker = setup_broker_with_messages();
-        let mut consumer = Consumer::from_beginning(broker.clone(), "test.topic");
+        let mut consumer = Consumer::from_beginning(&broker, "test.topic");
 
         let events = consumer.poll_batch(2).unwrap();
         assert_eq!(events.len(), 2);
@@ -140,7 +143,7 @@ mod tests {
     #[test]
     fn test_seek() {
         let broker = setup_broker_with_messages();
-        let mut consumer = Consumer::from_beginning(broker.clone(), "test.topic");
+        let mut consumer = Consumer::from_beginning(&broker, "test.topic");
 
         // Seek to offset 1
         consumer.seek(1);
@@ -157,11 +160,11 @@ mod tests {
 
     #[test]
     fn test_consumer_receives_new_messages() {
-        let broker = Arc::new(Broker::new());
-        let producer = Producer::new(broker.clone());
+        let broker = Broker::new();
+        let producer = Producer::new(&broker);
 
         // Create consumer before messages exist
-        let mut consumer = Consumer::from_beginning(broker.clone(), "test.topic");
+        let mut consumer = Consumer::from_beginning(&broker, "test.topic");
 
         // Produce messages
         producer.send_text("test.topic", "Message 1").unwrap();
@@ -189,8 +192,8 @@ mod tests {
     fn test_multiple_consumers() {
         let broker = setup_broker_with_messages();
 
-        let mut consumer1 = Consumer::from_beginning(broker.clone(), "test.topic");
-        let mut consumer2 = Consumer::from_beginning(broker.clone(), "test.topic");
+        let mut consumer1 = Consumer::from_beginning(&broker, "test.topic");
+        let mut consumer2 = Consumer::from_beginning(&broker, "test.topic");
 
         // Both consumers can independently consume messages
         let event1a = consumer1.poll().unwrap().unwrap();

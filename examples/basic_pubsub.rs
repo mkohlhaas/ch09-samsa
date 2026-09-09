@@ -1,17 +1,17 @@
-use samsa::{Broker, Consumer, Producer};
-use std::{error::Error, sync::Arc};
+use samsa::{Broker, Consumer};
+use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("Starting Samsa pub/sub example...");
 
     // Create the central broker
-    let broker = Arc::new(Broker::new());
+    let broker = Broker::new();
 
     // Create a producer that sends data DOWN to the broker
-    let producer = Producer::new(broker.clone());
+    let producer = broker.producer();
 
     // Create a consumer that pulls data DOWN from the broker
-    let mut consumer = Consumer::from_beginning(broker.clone(), "greetings");
+    let mut consumer = Consumer::from_beginning(&broker, "greetings");
 
     // Producer sends messages (data flows DOWN)
     println!("Sending messages...");

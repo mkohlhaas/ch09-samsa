@@ -15,12 +15,7 @@ pub trait StorageBackend: Send + Sync {
     fn append(&mut self, topic: String, event: Event) -> Result<()>;
 
     /// Fetch events from a topic
-    fn fetch(
-        &self,
-        topic: &str,
-        from_offset: u64,
-        max_events: usize,
-    ) -> Result<Vec<Arc<Event>>>;
+    fn fetch(&self, topic: &str, from_offset: u64, max_events: usize) -> Result<Vec<Arc<Event>>>;
 
     /// Get the latest offset for a topic (= the next offset a new event would get)
     fn latest_offset(&self, topic: &str) -> u64;
@@ -44,24 +39,15 @@ impl StorageBackend for InMemoryStorage {
 
     /// Fetch events from a topic
     ///
-    /// Only called by the broker (in broker's fetch method).
-    fn fetch(
-        &self,
-        topic: &str,
-        from_offset: u64,
-        max_events: usize,
-    ) -> Result<Vec<Arc<Event>>> {
+    /// Events are stored in offset order (offset *i* lives at index *i*), so a
+    /// direct slice gives O(1) access instead of scanning the whole log. Only
+    /// called by the broker (in broker's fetch method).
+    fn fetch(&self, topic: &str, from_offset: u64, max_events: usize) -> Result<Vec<Arc<Event>>> {
         let events = self
             .topics
             .get(topic)
-            .map(|events| {
-                events
-                    .iter()
-                    .filter(|event| event.offset >= from_offset)
-                    .take(max_events)
-                    .cloned()
-                    .collect()
-            })
+            .and_then(|events| events.get(from_offset as usize..))
+            .map(|events| events.iter().take(max_events).cloned().collect())
             .unwrap_or_default();
 
         Ok(events)

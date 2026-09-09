@@ -1,4 +1,4 @@
-use std::str::{self, from_utf8};
+use std::str::from_utf8;
 
 /// A message flowing through the Samsa system
 ///
