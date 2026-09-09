@@ -1,7 +1,7 @@
 use samsa::{Broker, Consumer, Producer};
-use std::sync::Arc;
+use std::{error::Error, sync::Arc};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     println!("Starting Samsa pub/sub example...");
 
     // Create the central broker
