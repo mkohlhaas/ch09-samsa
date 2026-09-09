@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 /// next offset from the events it already holds, so the broker keeps no
 /// separate offset bookkeeping.
 pub struct Broker {
-    storage: Arc<Mutex<dyn StorageBackend>>,
+    storage: Mutex<Box<dyn StorageBackend>>,
 }
 
 impl Default for Broker {
@@ -33,7 +33,7 @@ impl Broker {
         S: StorageBackend + 'static,
     {
         Self {
-            storage: Arc::new(Mutex::new(storage)),
+            storage: Mutex::new(Box::new(storage)),
         }
     }
 
